@@ -35,7 +35,7 @@ ClamshellCtl keeps the workflow small and explicit:
 Use the CLI as the stable path:
 
 ```sh
-clamshellctl on 2h
+clamshellctl on
 clamshellctl off
 ```
 
@@ -61,7 +61,7 @@ For the menu bar app, say this clearly:
 - LinkedIn post framed around the new "open-laptop walking" work pattern
 - Hacker News or Reddit only after the README is crisp and notarization status is
   honestly stated
-- Short demo video: start agent, run `clamshellctl on 30m`, close lid, restore
+- Short demo video: start agent, run `clamshellctl on`, close lid, restore on activity
 
 ## Cautions
 

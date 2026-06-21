@@ -17,11 +17,12 @@ brew tap dotcom07/clamshellctl
 brew install clamshellctl
 ```
 
-`clamshellctl on` does three things:
+`clamshellctl on` starts a clamshell session:
 
 - sets `pmset -c disablesleep 1`
 - sets the built-in display brightness to `0.0`
 - mutes the default output device
+- waits for keyboard, mouse, or trackpad activity, then restores with `off`
 
 `clamshellctl off` restores:
 
@@ -74,12 +75,14 @@ clamshellctl --help
 clamshellctl --version
 ```
 
-Timed sessions keep the command running until the timer ends, then restore with
-`off`. Duration suffixes can be `s`, `m`, or `h`; bare numbers are seconds.
+Bare `clamshellctl on` keeps the command running until keyboard, mouse, or
+trackpad activity resumes, then restores with `off`. A short grace period avoids
+restoring immediately because of the input used to start the command.
 
-Activity sessions keep the command running until keyboard, mouse, or trackpad
-activity resumes, then restore with `off`. A short grace period avoids restoring
-immediately because of the input used to start the command.
+Timed sessions keep the command running until the timer ends, then restore with
+`off`. Duration suffixes can be `s`, `m`, or `h`; bare numbers are seconds. Add
+`--until-activity` to a timed session to restore when either the timer expires or
+activity resumes.
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.

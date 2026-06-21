@@ -82,7 +82,7 @@ static void usage(FILE *stream, const char *program) {
     fprintf(stream, "       %s --help\n", program);
     fprintf(stream, "       %s --version\n", program);
     fprintf(stream, "\n");
-    fprintf(stream, "  on             keep AC power awake, dim the built-in display, mute output\n");
+    fprintf(stream, "  on             turn on, then restore when keyboard/mouse activity resumes\n");
     fprintf(stream, "  on 30m         turn on, wait 30 minutes, then restore with off\n");
     fprintf(stream, "  on --for 2h    turn on, wait 2 hours, then restore with off\n");
     fprintf(stream, "  on --until-activity\n");
@@ -1013,6 +1013,9 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "on") == 0) {
         on_options_t options = {0};
         if (parse_on_options(argc, argv, &options)) {
+            if (argc == 2) {
+                options.until_activity = true;
+            }
             return command_on_with_options(&options);
         }
 
