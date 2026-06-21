@@ -3,11 +3,15 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <IOKit/graphics/IOGraphicsTypes.h>
+#include <ctype.h>
 #include <errno.h>
+#include <limits.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -30,7 +34,9 @@ extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID display, dou
 #endif
 
 static const float kDimBrightness = 0.0f;
-static const float kRestoreBrightness = 0.5f;
+static const float kFallbackBrightness = 0.5f;
+
+static volatile sig_atomic_t g_interrupted = 0;
 
 typedef struct {
     CGDirectDisplayID id;
@@ -45,21 +51,201 @@ typedef struct {
     UInt32 muted;
 } status_t;
 
+typedef struct {
+    bool has_brightness;
+    float brightness;
+    bool has_mute;
+    UInt32 muted;
+} saved_state_t;
+
 static void usage(FILE *stream, const char *program) {
-    fprintf(stream, "usage: %s on|off|status|diag\n", program);
+    fprintf(stream, "usage: %s on [duration]\n", program);
+    fprintf(stream, "       %s on --for <duration>\n", program);
+    fprintf(stream, "       %s off|status|diag\n", program);
     fprintf(stream, "       %s --help\n", program);
     fprintf(stream, "       %s --version\n", program);
     fprintf(stream, "\n");
-    fprintf(stream, "  on       keep AC power awake, dim the built-in display, mute output\n");
-    fprintf(stream, "  off      restore normal AC sleep, set brightness to 0.5, unmute output\n");
-    fprintf(stream, "  status   print detected display brightness, mute state, and pmset value\n");
-    fprintf(stream, "  diag     print native brightness/audio capability diagnostics\n");
-    fprintf(stream, "  --help   show this help text\n");
-    fprintf(stream, "  --version  show clamshellctl version\n");
+    fprintf(stream, "  on             keep AC power awake, dim the built-in display, mute output\n");
+    fprintf(stream, "  on 30m         turn on, wait 30 minutes, then restore with off\n");
+    fprintf(stream, "  on --for 2h    turn on, wait 2 hours, then restore with off\n");
+    fprintf(stream, "  off            restore normal AC sleep and previous brightness/mute state\n");
+    fprintf(stream, "  status         print detected display brightness, mute state, and pmset value\n");
+    fprintf(stream, "  diag           print native brightness/audio capability diagnostics\n");
+    fprintf(stream, "  --help         show this help text\n");
+    fprintf(stream, "  --version      show clamshellctl version\n");
+    fprintf(stream, "\n");
+    fprintf(stream, "Durations accept s, m, or h suffixes. Bare numbers are seconds.\n");
 }
 
 static void version(void) {
     printf("clamshellctl %s\n", CLAMSHELLCTL_VERSION);
+}
+
+static void handle_signal(int signo) {
+    g_interrupted = signo;
+}
+
+static bool parse_duration(const char *input, unsigned int *seconds) {
+    if (input == NULL || *input == '\0') {
+        return false;
+    }
+
+    errno = 0;
+    char *end = NULL;
+    double amount = strtod(input, &end);
+    if (errno != 0 || end == input || amount <= 0.0) {
+        return false;
+    }
+
+    while (isspace((unsigned char)*end)) {
+        end++;
+    }
+
+    double multiplier = 1.0;
+    if (*end == '\0' || strcmp(end, "s") == 0 || strcmp(end, "sec") == 0 ||
+        strcmp(end, "secs") == 0 || strcmp(end, "second") == 0 ||
+        strcmp(end, "seconds") == 0) {
+        multiplier = 1.0;
+    } else if (strcmp(end, "m") == 0 || strcmp(end, "min") == 0 ||
+               strcmp(end, "mins") == 0 || strcmp(end, "minute") == 0 ||
+               strcmp(end, "minutes") == 0) {
+        multiplier = 60.0;
+    } else if (strcmp(end, "h") == 0 || strcmp(end, "hr") == 0 ||
+               strcmp(end, "hrs") == 0 || strcmp(end, "hour") == 0 ||
+               strcmp(end, "hours") == 0) {
+        multiplier = 3600.0;
+    } else {
+        return false;
+    }
+
+    double total = amount * multiplier;
+    if (total > (double)UINT_MAX) {
+        return false;
+    }
+
+    *seconds = total < 1.0 ? 1 : (unsigned int)total;
+    return true;
+}
+
+static void format_duration(unsigned int seconds, char *buffer, size_t size) {
+    if (seconds % 3600 == 0) {
+        snprintf(buffer, size, "%uh", seconds / 3600);
+    } else if (seconds % 60 == 0) {
+        snprintf(buffer, size, "%um", seconds / 60);
+    } else {
+        snprintf(buffer, size, "%us", seconds);
+    }
+}
+
+static bool state_dir_path(char *path, size_t size) {
+    const char *home = getenv("HOME");
+    if (home == NULL || *home == '\0') {
+        return false;
+    }
+
+    int written = snprintf(path, size, "%s/Library/Application Support/clamshellctl", home);
+    return written > 0 && (size_t)written < size;
+}
+
+static bool state_file_path(char *path, size_t size) {
+    const char *home = getenv("HOME");
+    if (home == NULL || *home == '\0') {
+        return false;
+    }
+
+    int written =
+        snprintf(path, size, "%s/Library/Application Support/clamshellctl/state", home);
+    return written > 0 && (size_t)written < size;
+}
+
+static bool ensure_state_dir(void) {
+    char path[PATH_MAX];
+    if (!state_dir_path(path, sizeof(path))) {
+        return false;
+    }
+
+    if (mkdir(path, 0700) == 0 || errno == EEXIST) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool save_state(const saved_state_t *state) {
+    char path[PATH_MAX];
+    if (!ensure_state_dir() || !state_file_path(path, sizeof(path))) {
+        return false;
+    }
+
+    char temp_path[PATH_MAX];
+    int written = snprintf(temp_path, sizeof(temp_path), "%s.tmp", path);
+    if (written <= 0 || (size_t)written >= sizeof(temp_path)) {
+        return false;
+    }
+
+    FILE *file = fopen(temp_path, "w");
+    if (file == NULL) {
+        return false;
+    }
+
+    fprintf(file, "version=1\n");
+    fprintf(file, "has_brightness=%d\n", state->has_brightness ? 1 : 0);
+    fprintf(file, "brightness=%.6f\n", state->brightness);
+    fprintf(file, "has_mute=%d\n", state->has_mute ? 1 : 0);
+    fprintf(file, "muted=%u\n", state->muted ? 1 : 0);
+
+    if (fclose(file) != 0) {
+        unlink(temp_path);
+        return false;
+    }
+
+    if (rename(temp_path, path) != 0) {
+        unlink(temp_path);
+        return false;
+    }
+
+    return true;
+}
+
+static bool load_state(saved_state_t *state) {
+    memset(state, 0, sizeof(*state));
+
+    char path[PATH_MAX];
+    if (!state_file_path(path, sizeof(path))) {
+        return false;
+    }
+
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        return false;
+    }
+
+    char line[128];
+    while (fgets(line, sizeof(line), file) != NULL) {
+        int int_value = 0;
+        float float_value = 0.0f;
+        unsigned int unsigned_value = 0;
+
+        if (sscanf(line, "has_brightness=%d", &int_value) == 1) {
+            state->has_brightness = int_value != 0;
+        } else if (sscanf(line, "brightness=%f", &float_value) == 1) {
+            state->brightness = float_value;
+        } else if (sscanf(line, "has_mute=%d", &int_value) == 1) {
+            state->has_mute = int_value != 0;
+        } else if (sscanf(line, "muted=%u", &unsigned_value) == 1) {
+            state->muted = unsigned_value ? 1 : 0;
+        }
+    }
+
+    fclose(file);
+    return state->has_brightness || state->has_mute;
+}
+
+static void remove_state(void) {
+    char path[PATH_MAX];
+    if (state_file_path(path, sizeof(path))) {
+        unlink(path);
+    }
 }
 
 static bool is_success(int status) {
@@ -424,31 +610,73 @@ static bool get_mute(UInt32 *muted) {
     return status == noErr;
 }
 
+static saved_state_t capture_state(void) {
+    saved_state_t state = {0};
+    bool built_in = false;
+
+    state.has_brightness = get_brightness(&state.brightness, &built_in);
+    state.has_mute = get_mute(&state.muted);
+
+    return state;
+}
+
 static int command_on(void) {
+    saved_state_t previous = {0};
+    bool has_existing_state = load_state(&previous);
+    if (!has_existing_state) {
+        previous = capture_state();
+        if (!save_state(&previous)) {
+            fprintf(stderr, "clamshellctl: warning: failed to save restore state\n");
+        }
+    }
+
     if (run_pmset_disablesleep(true) != 0) {
+        if (!has_existing_state) {
+            remove_state();
+        }
         return 1;
     }
     if (set_brightness(kDimBrightness) != 0) {
         run_pmset_disablesleep(false);
+        if (!has_existing_state) {
+            remove_state();
+        }
         return 1;
     }
     if (set_mute(true) != 0) {
-        set_brightness(kRestoreBrightness);
+        set_brightness(previous.has_brightness ? previous.brightness : kFallbackBrightness);
+        if (previous.has_mute) {
+            set_mute(previous.muted != 0);
+        }
         run_pmset_disablesleep(false);
+        if (!has_existing_state) {
+            remove_state();
+        }
         return 1;
     }
 
-    printf("clamshell mode on: disablesleep=1 brightness=%.2f muted=1\n", kDimBrightness);
+    printf("clamshell mode on: disablesleep=1 brightness=%.2f muted=1", kDimBrightness);
+    if (previous.has_brightness) {
+        printf(" restore-brightness=%.2f", previous.brightness);
+    }
+    if (previous.has_mute) {
+        printf(" restore-muted=%u", previous.muted ? 1 : 0);
+    }
+    printf("\n");
     return 0;
 }
 
 static int command_off(void) {
     int result = 0;
+    saved_state_t saved = {0};
+    bool has_saved_state = load_state(&saved);
+    float brightness = saved.has_brightness ? saved.brightness : kFallbackBrightness;
+    UInt32 muted = saved.has_mute ? saved.muted : 0;
 
-    if (set_brightness(kRestoreBrightness) != 0) {
+    if (set_brightness(brightness) != 0) {
         result = 1;
     }
-    if (set_mute(false) != 0) {
+    if (set_mute(muted != 0) != 0) {
         result = 1;
     }
     if (run_pmset_disablesleep(false) != 0) {
@@ -456,7 +684,45 @@ static int command_off(void) {
     }
 
     if (result == 0) {
-        printf("clamshell mode off: disablesleep=0 brightness=%.2f muted=0\n", kRestoreBrightness);
+        remove_state();
+        printf("clamshell mode off: disablesleep=0 brightness=%.2f muted=%u",
+               brightness,
+               muted ? 1 : 0);
+        if (!has_saved_state) {
+            printf(" restore=fallback");
+        }
+        printf("\n");
+    }
+    return result;
+}
+
+static int command_on_for(unsigned int seconds) {
+    int result = command_on();
+    if (result != 0) {
+        return result;
+    }
+
+    char duration[32];
+    format_duration(seconds, duration, sizeof(duration));
+    printf("timer: clamshell mode will turn off after %s; press Ctrl-C to restore now\n",
+           duration);
+
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+    signal(SIGHUP, handle_signal);
+
+    unsigned int remaining = seconds;
+    while (remaining > 0 && g_interrupted == 0) {
+        remaining = sleep(remaining);
+    }
+
+    if (g_interrupted != 0) {
+        fprintf(stderr, "clamshellctl: interrupted; restoring now\n");
+    }
+
+    result = command_off();
+    if (g_interrupted != 0 && result == 0) {
+        return 128 + g_interrupted;
     }
     return result;
 }
@@ -488,6 +754,16 @@ static int command_status(void) {
         printf("disablesleep: %d\n", disablesleep);
     } else {
         printf("disablesleep: unavailable\n");
+    }
+
+    saved_state_t saved = {0};
+    if (load_state(&saved)) {
+        if (saved.has_brightness) {
+            printf("restore-brightness: %.3f\n", saved.brightness);
+        }
+        if (saved.has_mute) {
+            printf("restore-muted: %u\n", saved.muted ? 1 : 0);
+        }
     }
 
     return status.has_brightness && status.has_mute && has_disablesleep ? 0 : 1;
@@ -550,34 +826,55 @@ static int command_diag(void) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
+    if (argc < 2) {
         usage(stderr, argv[0]);
         return 64;
     }
 
-    if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "help") == 0) {
+    if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "help") == 0)) {
         usage(stdout, argv[0]);
         return 0;
     }
 
-    if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "version") == 0) {
+    if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "version") == 0)) {
         version();
         return 0;
     }
 
     if (strcmp(argv[1], "on") == 0) {
-        return command_on();
+        if (argc == 2) {
+            return command_on();
+        }
+
+        unsigned int seconds = 0;
+        if (argc == 3 && parse_duration(argv[2], &seconds)) {
+            return command_on_for(seconds);
+        }
+
+        if (argc == 3 && strncmp(argv[2], "--for=", 6) == 0 &&
+            parse_duration(argv[2] + 6, &seconds)) {
+            return command_on_for(seconds);
+        }
+
+        if (argc == 4 && strcmp(argv[2], "--for") == 0 &&
+            parse_duration(argv[3], &seconds)) {
+            return command_on_for(seconds);
+        }
+
+        fprintf(stderr, "clamshellctl: invalid duration\n");
+        usage(stderr, argv[0]);
+        return 64;
     }
 
-    if (strcmp(argv[1], "off") == 0) {
+    if (argc == 2 && strcmp(argv[1], "off") == 0) {
         return command_off();
     }
 
-    if (strcmp(argv[1], "status") == 0) {
+    if (argc == 2 && strcmp(argv[1], "status") == 0) {
         return command_status();
     }
 
-    if (strcmp(argv[1], "diag") == 0) {
+    if (argc == 2 && strcmp(argv[1], "diag") == 0) {
         return command_diag();
     }
 

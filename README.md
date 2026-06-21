@@ -23,8 +23,11 @@ brew install clamshellctl
 `clamshellctl off` restores:
 
 - `pmset -c disablesleep 0`
-- brightness to `0.5`
-- output mute off
+- the brightness value saved by the last `clamshellctl on`
+- the output mute state saved by the last `clamshellctl on`
+
+If no saved state is available, `off` falls back to brightness `0.5` and output
+mute off.
 
 ## Build
 
@@ -50,12 +53,17 @@ Run it from your normal user session:
 
 ```sh
 clamshellctl on
+clamshellctl on 30m
+clamshellctl on --for 2h
 clamshellctl off
 clamshellctl status
 clamshellctl diag
 clamshellctl --help
 clamshellctl --version
 ```
+
+Timed sessions keep the command running until the timer ends, then restore with
+`off`. Duration suffixes can be `s`, `m`, or `h`; bare numbers are seconds.
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.
