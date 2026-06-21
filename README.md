@@ -55,6 +55,8 @@ Run it from your normal user session:
 clamshellctl on
 clamshellctl on 30m
 clamshellctl on --for 2h
+clamshellctl on --until-activity
+clamshellctl on 2h --until-activity
 clamshellctl off
 clamshellctl status
 clamshellctl diag
@@ -64,6 +66,10 @@ clamshellctl --version
 
 Timed sessions keep the command running until the timer ends, then restore with
 `off`. Duration suffixes can be `s`, `m`, or `h`; bare numbers are seconds.
+
+Activity sessions keep the command running until keyboard, mouse, or trackpad
+activity resumes, then restore with `off`. A short grace period avoids restoring
+immediately because of the input used to start the command.
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.

@@ -1,6 +1,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <CoreAudio/CoreAudio.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <IOKit/graphics/IOGraphicsTypes.h>
 #include <ctype.h>
@@ -8,14 +9,20 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 extern char **environ;
+
+#ifndef kIOMainPortDefault
+#define kIOMainPortDefault kIOMasterPortDefault
+#endif
 
 extern bool DisplayServicesCanChangeBrightness(CGDirectDisplayID display)
     __attribute__((weak_import));
@@ -35,6 +42,8 @@ extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID display, dou
 
 static const float kDimBrightness = 0.0f;
 static const float kFallbackBrightness = 0.5f;
+static const uint64_t kActivityThresholdNs = 1500000000ULL;
+static const unsigned int kActivityGraceSeconds = 3;
 
 static volatile sig_atomic_t g_interrupted = 0;
 
@@ -58,9 +67,16 @@ typedef struct {
     UInt32 muted;
 } saved_state_t;
 
+typedef struct {
+    bool has_duration;
+    unsigned int duration_seconds;
+    bool until_activity;
+} on_options_t;
+
 static void usage(FILE *stream, const char *program) {
     fprintf(stream, "usage: %s on [duration]\n", program);
     fprintf(stream, "       %s on --for <duration>\n", program);
+    fprintf(stream, "       %s on [duration] --until-activity\n", program);
     fprintf(stream, "       %s off|status|diag\n", program);
     fprintf(stream, "       %s --help\n", program);
     fprintf(stream, "       %s --version\n", program);
@@ -68,6 +84,8 @@ static void usage(FILE *stream, const char *program) {
     fprintf(stream, "  on             keep AC power awake, dim the built-in display, mute output\n");
     fprintf(stream, "  on 30m         turn on, wait 30 minutes, then restore with off\n");
     fprintf(stream, "  on --for 2h    turn on, wait 2 hours, then restore with off\n");
+    fprintf(stream, "  on --until-activity\n");
+    fprintf(stream, "                 turn on, then restore when keyboard/mouse activity resumes\n");
     fprintf(stream, "  off            restore normal AC sleep and previous brightness/mute state\n");
     fprintf(stream, "  status         print detected display brightness, mute state, and pmset value\n");
     fprintf(stream, "  diag           print native brightness/audio capability diagnostics\n");
@@ -135,6 +153,84 @@ static void format_duration(unsigned int seconds, char *buffer, size_t size) {
     } else {
         snprintf(buffer, size, "%us", seconds);
     }
+}
+
+static bool parse_on_options(int argc, char **argv, on_options_t *options) {
+    memset(options, 0, sizeof(*options));
+
+    for (int i = 2; i < argc; i++) {
+        unsigned int seconds = 0;
+
+        if (strcmp(argv[i], "--until-activity") == 0) {
+            if (options->until_activity) {
+                return false;
+            }
+            options->until_activity = true;
+            continue;
+        }
+
+        if (strcmp(argv[i], "--for") == 0) {
+            if (options->has_duration || i + 1 >= argc ||
+                !parse_duration(argv[i + 1], &seconds)) {
+                return false;
+            }
+            options->has_duration = true;
+            options->duration_seconds = seconds;
+            i++;
+            continue;
+        }
+
+        if (strncmp(argv[i], "--for=", 6) == 0) {
+            if (options->has_duration || !parse_duration(argv[i] + 6, &seconds)) {
+                return false;
+            }
+            options->has_duration = true;
+            options->duration_seconds = seconds;
+            continue;
+        }
+
+        if (!options->has_duration && parse_duration(argv[i], &seconds)) {
+            options->has_duration = true;
+            options->duration_seconds = seconds;
+            continue;
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+static bool get_hid_idle_time_ns(uint64_t *idle_ns) {
+    io_service_t service =
+        IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"));
+    if (service == MACH_PORT_NULL) {
+        return false;
+    }
+
+    CFTypeRef value = IORegistryEntryCreateCFProperty(
+        service,
+        CFSTR("HIDIdleTime"),
+        kCFAllocatorDefault,
+        0);
+    IOObjectRelease(service);
+
+    if (value == NULL) {
+        return false;
+    }
+
+    bool ok = false;
+    if (CFGetTypeID(value) == CFNumberGetTypeID()) {
+        int64_t signed_value = 0;
+        if (CFNumberGetValue(value, kCFNumberSInt64Type, &signed_value) &&
+            signed_value >= 0) {
+            *idle_ns = (uint64_t)signed_value;
+            ok = true;
+        }
+    }
+
+    CFRelease(value);
+    return ok;
 }
 
 static bool state_dir_path(char *path, size_t size) {
@@ -696,24 +792,73 @@ static int command_off(void) {
     return result;
 }
 
-static int command_on_for(unsigned int seconds) {
+static int command_on_with_options(const on_options_t *options) {
+    if (options->until_activity) {
+        uint64_t idle_ns = 0;
+        if (!get_hid_idle_time_ns(&idle_ns)) {
+            fprintf(stderr, "clamshellctl: failed to read keyboard/mouse idle time\n");
+            return 1;
+        }
+    }
+
     int result = command_on();
     if (result != 0) {
         return result;
     }
 
-    char duration[32];
-    format_duration(seconds, duration, sizeof(duration));
-    printf("timer: clamshell mode will turn off after %s; press Ctrl-C to restore now\n",
-           duration);
+    if (!options->has_duration && !options->until_activity) {
+        return 0;
+    }
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
     signal(SIGHUP, handle_signal);
 
-    unsigned int remaining = seconds;
-    while (remaining > 0 && g_interrupted == 0) {
-        remaining = sleep(remaining);
+    if (options->has_duration) {
+        char duration[32];
+        format_duration(options->duration_seconds, duration, sizeof(duration));
+        printf("timer: clamshell mode will turn off after %s", duration);
+        if (options->until_activity) {
+            printf(" or when keyboard/mouse activity resumes");
+        }
+        printf("; press Ctrl-C to restore now\n");
+    }
+
+    if (options->until_activity) {
+        printf("activity: watching keyboard/mouse idle time after %us grace period\n",
+               kActivityGraceSeconds);
+    }
+
+    time_t started_at = time(NULL);
+    unsigned int grace_remaining = options->until_activity ? kActivityGraceSeconds : 0;
+    bool should_restore = false;
+
+    while (!should_restore && g_interrupted == 0) {
+        if (grace_remaining > 0) {
+            grace_remaining--;
+        } else if (options->until_activity) {
+            uint64_t idle_ns = 0;
+            if (!get_hid_idle_time_ns(&idle_ns)) {
+                fprintf(stderr, "clamshellctl: lost keyboard/mouse idle time; restoring now\n");
+                should_restore = true;
+            } else if (idle_ns <= kActivityThresholdNs) {
+                printf("activity: detected keyboard/mouse activity; restoring now\n");
+                should_restore = true;
+            }
+        }
+
+        if (!should_restore && options->has_duration) {
+            time_t now = time(NULL);
+            if (now == (time_t)-1 || started_at == (time_t)-1 ||
+                (unsigned long)(now - started_at) >= options->duration_seconds) {
+                printf("timer: expired; restoring now\n");
+                should_restore = true;
+            }
+        }
+
+        if (!should_restore && g_interrupted == 0) {
+            sleep(1);
+        }
     }
 
     if (g_interrupted != 0) {
@@ -821,6 +966,13 @@ static int command_diag(void) {
         printf("pmset SleepDisabled: unavailable\n");
     }
 
+    uint64_t idle_ns = 0;
+    if (get_hid_idle_time_ns(&idle_ns)) {
+        printf("IOHIDSystem idle: %.3fs\n", (double)idle_ns / 1000000000.0);
+    } else {
+        printf("IOHIDSystem idle: unavailable\n");
+    }
+
     printf("pmset privilege mode: %s\n", geteuid() == 0 ? "root" : "sudo-on-demand");
     return 0;
 }
@@ -842,26 +994,12 @@ int main(int argc, char **argv) {
     }
 
     if (strcmp(argv[1], "on") == 0) {
-        if (argc == 2) {
-            return command_on();
+        on_options_t options = {0};
+        if (parse_on_options(argc, argv, &options)) {
+            return command_on_with_options(&options);
         }
 
-        unsigned int seconds = 0;
-        if (argc == 3 && parse_duration(argv[2], &seconds)) {
-            return command_on_for(seconds);
-        }
-
-        if (argc == 3 && strncmp(argv[2], "--for=", 6) == 0 &&
-            parse_duration(argv[2] + 6, &seconds)) {
-            return command_on_for(seconds);
-        }
-
-        if (argc == 4 && strcmp(argv[2], "--for") == 0 &&
-            parse_duration(argv[3], &seconds)) {
-            return command_on_for(seconds);
-        }
-
-        fprintf(stderr, "clamshellctl: invalid duration\n");
+        fprintf(stderr, "clamshellctl: invalid on options\n");
         usage(stderr, argv[0]);
         return 64;
     }
