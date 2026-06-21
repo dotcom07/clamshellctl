@@ -1,8 +1,8 @@
 # Positioning
 
-ClamshellCtl is for MacBook users who want long-running work to continue while
-the built-in display is dark and the computer is physically closed or nearly
-closed.
+ClamshellCtl is a lightweight CLI for MacBook users who want long-running work to
+continue while the built-in display is dark, audio is muted, and the computer is
+physically closed or nearly closed.
 
 The clearest current wedge is AI agents. Developers are starting long Codex,
 Claude Code, Gemini CLI, build, test, and refactor sessions, then discovering
@@ -11,7 +11,7 @@ enough to turn into the "open-laptop walking" meme.
 
 ## Primary Message
 
-Stop carrying a half-open MacBook just to keep your agent alive.
+Close the MacBook. Keep the agent running. Let the screen rest.
 
 ## Audience
 
@@ -29,6 +29,18 @@ ClamshellCtl keeps the workflow small and explicit:
 - mute audio
 - restore brightness and mute state later
 - optionally stop after a timer or when activity resumes
+
+The differentiator is the bundle, not just one underlying trick. Existing Mac
+keep-awake tools solve sleep, brightness tools solve brightness, and audio tools
+solve mute. ClamshellCtl combines the agent-session workflow into one
+lightweight command:
+
+```sh
+clamshellctl on
+```
+
+That one command keeps the Mac awake, dims the built-in display, mutes audio, and
+restores when keyboard, mouse, or trackpad activity resumes.
 
 ## Recommended Product Framing
 
@@ -49,9 +61,10 @@ For the menu bar app, say this clearly:
 ## Copy Ideas
 
 - Keep your agent running. Let the screen rest.
+- Close the lid. Keep the job alive.
 - For the MacBook you no longer want to carry half-open.
-- A tiny clamshell switch for long AI runs.
-- Dim the display, mute the Mac, keep the job alive.
+- A lightweight clamshell switch for long AI runs.
+- Dim the display, mute the Mac, restore when you return.
 - Built for the open-laptop walking era.
 
 ## Launch Channels

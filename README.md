@@ -1,8 +1,9 @@
 # clamshellctl
 
-Native macOS CLI for Apple Silicon MacBook clamshell setups. It keeps the
-machine awake on AC power, dims the built-in display, and mutes the default
-audio output without AppleScript or Accessibility permissions.
+Lightweight native macOS CLI for Apple Silicon MacBook clamshell sessions. It
+keeps the machine awake on AC power, dims the built-in display, mutes the default
+audio output, and restores when you come back, without AppleScript or
+Accessibility permissions.
 
 Tested on Apple Silicon MacBook Pro hardware and designed for M1, M2, M3, and
 M4 family Macs.
