@@ -1,0 +1,13 @@
+Twemoji Spiral Shell
+--------------------
+
+ClamshellCtl uses the Twemoji Spiral Shell artwork for its GUI icon.
+
+Source: https://commons.wikimedia.org/wiki/File:Twemoji_1f41a.svg
+Original project: https://github.com/twitter/twemoji
+Copyright: 2019 Twitter, Inc and other contributors
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License URL: https://creativecommons.org/licenses/by/4.0/
+
+The icon is bundled as SVG, PNG, and ICNS assets. The PNG and ICNS files are
+rendered from the SVG for macOS app packaging.

@@ -7,6 +7,9 @@ audio output without AppleScript or Accessibility permissions.
 Tested on Apple Silicon MacBook Pro hardware and designed for M1, M2, M3, and
 M4 family Macs.
 
+ClamshellCtl also includes a small macOS menu bar app for people who prefer a
+clickable interface over terminal commands.
+
 ## Install with Homebrew
 
 ```sh
@@ -47,6 +50,13 @@ Install it somewhere on your `PATH`:
 sudo make install
 ```
 
+Build the menu bar app:
+
+```sh
+make app
+open build/ClamshellCtl.app
+```
+
 ## Use
 
 Run it from your normal user session:
@@ -74,6 +84,37 @@ immediately because of the input used to start the command.
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.
 
+## Menu Bar App
+
+The GUI lives in the top-right macOS menu bar. It is intentionally small:
+
+- Turn On
+- Turn Off
+- Turn On for 30 minutes, 1 hour, 2 hours, or a custom timer
+- Turn On Until Activity
+- Optional Strong Mode
+
+Standard Mode is the default. It uses the public macOS power assertion API, dims
+the built-in display, and mutes audio without asking for an administrator
+password. This is the safest experience for most people.
+
+Strong Mode is optional. It is for users who specifically want the GUI to use the
+same stronger `pmset disablesleep` behavior as the CLI. When enabled, the app asks
+for an administrator password once to install a narrow sudoers rule. That rule
+allows only these two system commands without a password:
+
+```sh
+/usr/bin/pmset -c disablesleep 1
+/usr/bin/pmset -c disablesleep 0
+```
+
+ClamshellCtl itself is not allowed to run as root. The Homebrew-installed binary
+is not placed in sudoers. This keeps the security boundary focused on Apple's
+system `pmset` tool and exactly two argument sets.
+
+You can remove Strong Mode from the menu bar app at any time. Standard Mode keeps
+working after Strong Mode is removed.
+
 ## Notes
 
 Brightness control tries three native macOS paths in this order:
@@ -89,3 +130,6 @@ tool links their exported symbols weakly and falls back when a path is unavailab
 On Apple Silicon MacBook Pros where Homebrew `brightness` fails with an IOKit
 error, `clamshellctl diag` should show whether `DisplayServices` or
 `CoreDisplay` can read the built-in display brightness.
+
+The GUI icon uses Twemoji Spiral Shell under CC BY 4.0. See `NOTICE` for
+attribution.

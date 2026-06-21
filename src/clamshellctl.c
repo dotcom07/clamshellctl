@@ -71,6 +71,7 @@ typedef struct {
     bool has_duration;
     unsigned int duration_seconds;
     bool until_activity;
+    bool without_pmset;
 } on_options_t;
 
 static void usage(FILE *stream, const char *program) {
@@ -166,6 +167,14 @@ static bool parse_on_options(int argc, char **argv, on_options_t *options) {
                 return false;
             }
             options->until_activity = true;
+            continue;
+        }
+
+        if (strcmp(argv[i], "--without-pmset") == 0) {
+            if (options->without_pmset) {
+                return false;
+            }
+            options->without_pmset = true;
             continue;
         }
 
@@ -716,7 +725,7 @@ static saved_state_t capture_state(void) {
     return state;
 }
 
-static int command_on(void) {
+static int command_on(bool manage_pmset) {
     saved_state_t previous = {0};
     bool has_existing_state = load_state(&previous);
     if (!has_existing_state) {
@@ -726,14 +735,16 @@ static int command_on(void) {
         }
     }
 
-    if (run_pmset_disablesleep(true) != 0) {
+    if (manage_pmset && run_pmset_disablesleep(true) != 0) {
         if (!has_existing_state) {
             remove_state();
         }
         return 1;
     }
     if (set_brightness(kDimBrightness) != 0) {
-        run_pmset_disablesleep(false);
+        if (manage_pmset) {
+            run_pmset_disablesleep(false);
+        }
         if (!has_existing_state) {
             remove_state();
         }
@@ -744,14 +755,18 @@ static int command_on(void) {
         if (previous.has_mute) {
             set_mute(previous.muted != 0);
         }
-        run_pmset_disablesleep(false);
+        if (manage_pmset) {
+            run_pmset_disablesleep(false);
+        }
         if (!has_existing_state) {
             remove_state();
         }
         return 1;
     }
 
-    printf("clamshell mode on: disablesleep=1 brightness=%.2f muted=1", kDimBrightness);
+    printf("clamshell mode on: disablesleep=%s brightness=%.2f muted=1",
+           manage_pmset ? "1" : "unchanged",
+           kDimBrightness);
     if (previous.has_brightness) {
         printf(" restore-brightness=%.2f", previous.brightness);
     }
@@ -762,7 +777,7 @@ static int command_on(void) {
     return 0;
 }
 
-static int command_off(void) {
+static int command_off(bool manage_pmset) {
     int result = 0;
     saved_state_t saved = {0};
     bool has_saved_state = load_state(&saved);
@@ -775,13 +790,14 @@ static int command_off(void) {
     if (set_mute(muted != 0) != 0) {
         result = 1;
     }
-    if (run_pmset_disablesleep(false) != 0) {
+    if (manage_pmset && run_pmset_disablesleep(false) != 0) {
         result = 1;
     }
 
     if (result == 0) {
         remove_state();
-        printf("clamshell mode off: disablesleep=0 brightness=%.2f muted=%u",
+        printf("clamshell mode off: disablesleep=%s brightness=%.2f muted=%u",
+               manage_pmset ? "0" : "unchanged",
                brightness,
                muted ? 1 : 0);
         if (!has_saved_state) {
@@ -801,7 +817,8 @@ static int command_on_with_options(const on_options_t *options) {
         }
     }
 
-    int result = command_on();
+    bool manage_pmset = !options->without_pmset;
+    int result = command_on(manage_pmset);
     if (result != 0) {
         return result;
     }
@@ -865,7 +882,7 @@ static int command_on_with_options(const on_options_t *options) {
         fprintf(stderr, "clamshellctl: interrupted; restoring now\n");
     }
 
-    result = command_off();
+    result = command_off(manage_pmset);
     if (g_interrupted != 0 && result == 0) {
         return 128 + g_interrupted;
     }
@@ -1004,8 +1021,9 @@ int main(int argc, char **argv) {
         return 64;
     }
 
-    if (argc == 2 && strcmp(argv[1], "off") == 0) {
-        return command_off();
+    if ((argc == 2 || (argc == 3 && strcmp(argv[2], "--without-pmset") == 0)) &&
+        strcmp(argv[1], "off") == 0) {
+        return command_off(argc == 2);
     }
 
     if (argc == 2 && strcmp(argv[1], "status") == 0) {
