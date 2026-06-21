@@ -18,10 +18,6 @@ M4 family Macs.
 ClamshellCtl also includes experimental source for a small macOS menu bar app,
 but the public Homebrew distribution is CLI-only for now.
 
-Agent skills for Codex and Claude Code are included so assistants can suggest a
-clamshell session before long-running local work. See
-[`docs/agent-skills.md`](docs/agent-skills.md).
-
 ## Why
 
 Existing tools cover parts of this workflow:
