@@ -5,7 +5,8 @@ Small native macOS CLI for clamshell-style use on Apple Silicon MacBooks.
 ## Install with Homebrew
 
 ```sh
-brew install dotcom07/tap/clamshellctl
+brew tap dotcom07/clamshellctl
+brew install clamshellctl
 ```
 
 `clamshellctl on` does three things:
