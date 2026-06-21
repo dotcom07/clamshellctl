@@ -2,6 +2,12 @@
 
 Small native macOS CLI for clamshell-style use on Apple Silicon MacBooks.
 
+## Install with Homebrew
+
+```sh
+brew install dotcom07/tap/clamshellctl
+```
+
 `clamshellctl on` does three things:
 
 - sets `pmset -c disablesleep 1`
