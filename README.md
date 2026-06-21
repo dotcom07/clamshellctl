@@ -12,9 +12,18 @@ clickable interface over terminal commands.
 
 ## Install with Homebrew
 
+Install the terminal command:
+
 ```sh
 brew tap dotcom07/clamshellctl
 brew install clamshellctl
+```
+
+Install the menu bar app:
+
+```sh
+brew tap dotcom07/clamshellctl
+brew install --cask clamshellctl-app
 ```
 
 `clamshellctl on` does three things:
@@ -114,6 +123,26 @@ system `pmset` tool and exactly two argument sets.
 
 You can remove Strong Mode from the menu bar app at any time. Standard Mode keeps
 working after Strong Mode is removed.
+
+## Public App Distribution
+
+The terminal command is the easiest first release because Homebrew builds it
+from source and installs it like other command-line tools.
+
+The menu bar app is the friendlier product experience, but public macOS apps
+need one extra business step: Developer ID signing and Apple notarization.
+Without that, macOS Gatekeeper can warn that the app is from an unidentified
+developer, even if the code is open source and the Homebrew install succeeds.
+
+For non-developer users, the intended public path is:
+
+1. Install from Homebrew.
+2. Open ClamshellCtl from the menu bar.
+3. Use Standard Mode without an administrator password.
+4. Enable Strong Mode only if they want the stronger closed-display behavior.
+
+Until the app is Developer ID signed and notarized, treat the cask as a tester
+build. The CLI remains the recommended stable path.
 
 ## Notes
 

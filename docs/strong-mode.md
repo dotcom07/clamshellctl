@@ -50,3 +50,19 @@ configuration change so the menu bar app can use `pmset disablesleep` without
 repeated password prompts.
 
 You can remove Strong Mode from the menu bar app at any time.
+
+## How To Explain This To Users
+
+Standard Mode is the default because it is the low-friction option: install the
+app, click Turn On, and macOS does not ask for an administrator password.
+
+Strong Mode is an advanced switch. It is useful when someone specifically wants
+the MacBook to stay awake more aggressively while closed and connected to power.
+The app asks for an administrator password once, then stores a very narrow
+permission that only controls `pmset disablesleep` on and off.
+
+That tradeoff is intentional:
+
+- Standard Mode is best for most people.
+- Strong Mode is best for people who understand the extra system permission.
+- ClamshellCtl should not ask users to bypass macOS security just to try the app.
