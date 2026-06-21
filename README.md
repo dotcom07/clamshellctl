@@ -1,6 +1,11 @@
 # clamshellctl
 
-Small native macOS CLI for clamshell-style use on Apple Silicon MacBooks.
+Native macOS CLI for Apple Silicon MacBook clamshell setups. It keeps the
+machine awake on AC power, dims the built-in display, and mutes the default
+audio output without AppleScript or Accessibility permissions.
+
+Tested on Apple Silicon MacBook Pro hardware and designed for M1, M2, M3, and
+M4 family Macs.
 
 ## Install with Homebrew
 
@@ -48,17 +53,12 @@ clamshellctl on
 clamshellctl off
 clamshellctl status
 clamshellctl diag
+clamshellctl --help
+clamshellctl --version
 ```
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.
-
-Optional shell aliases:
-
-```sh
-alias clamshellOn='clamshellctl on'
-alias clamshellOff='clamshellctl off'
-```
 
 ## Notes
 

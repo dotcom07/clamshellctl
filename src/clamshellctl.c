@@ -25,6 +25,10 @@ extern double CoreDisplay_Display_GetUserBrightness(CGDirectDisplayID display)
 extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID display, double brightness)
     __attribute__((weak_import));
 
+#ifndef CLAMSHELLCTL_VERSION
+#define CLAMSHELLCTL_VERSION "dev"
+#endif
+
 static const float kDimBrightness = 0.0f;
 static const float kRestoreBrightness = 0.5f;
 
@@ -41,13 +45,21 @@ typedef struct {
     UInt32 muted;
 } status_t;
 
-static void usage(const char *program) {
-    fprintf(stderr, "usage: %s on|off|status|diag\n", program);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "  on      keep AC power awake, dim the built-in display, mute output\n");
-    fprintf(stderr, "  off     restore normal AC sleep, set brightness to 0.5, unmute output\n");
-    fprintf(stderr, "  status  print detected display brightness, mute state, and pmset value\n");
-    fprintf(stderr, "  diag    print native brightness/audio capability diagnostics\n");
+static void usage(FILE *stream, const char *program) {
+    fprintf(stream, "usage: %s on|off|status|diag\n", program);
+    fprintf(stream, "       %s --help\n", program);
+    fprintf(stream, "       %s --version\n", program);
+    fprintf(stream, "\n");
+    fprintf(stream, "  on       keep AC power awake, dim the built-in display, mute output\n");
+    fprintf(stream, "  off      restore normal AC sleep, set brightness to 0.5, unmute output\n");
+    fprintf(stream, "  status   print detected display brightness, mute state, and pmset value\n");
+    fprintf(stream, "  diag     print native brightness/audio capability diagnostics\n");
+    fprintf(stream, "  --help   show this help text\n");
+    fprintf(stream, "  --version  show clamshellctl version\n");
+}
+
+static void version(void) {
+    printf("clamshellctl %s\n", CLAMSHELLCTL_VERSION);
 }
 
 static bool is_success(int status) {
@@ -539,8 +551,18 @@ static int command_diag(void) {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        usage(argv[0]);
+        usage(stderr, argv[0]);
         return 64;
+    }
+
+    if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "help") == 0) {
+        usage(stdout, argv[0]);
+        return 0;
+    }
+
+    if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "version") == 0) {
+        version();
+        return 0;
     }
 
     if (strcmp(argv[1], "on") == 0) {
@@ -559,6 +581,6 @@ int main(int argc, char **argv) {
         return command_diag();
     }
 
-    usage(argv[0]);
+    usage(stderr, argv[0]);
     return 64;
 }

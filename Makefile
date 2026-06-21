@@ -3,9 +3,10 @@ PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 BUILD_DIR ?= build
 TARGET := $(BUILD_DIR)/clamshellctl
+VERSION ?= dev
 
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Wno-deprecated-declarations -O2
-CPPFLAGS ?=
+CPPFLAGS += -DCLAMSHELLCTL_VERSION=\"$(VERSION)\"
 LDFLAGS ?=
 LDLIBS := -framework ApplicationServices \
 	-framework CoreAudio \
