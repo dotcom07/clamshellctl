@@ -1,5 +1,12 @@
 # clamshellctl
 
+**Close the MacBook. Keep the agent running. Let the screen rest.**
+
+<p align="center">
+  <img src="docs/assets/the-openclaw.png" alt="The OpenClaw holding a MacBook slightly open" width="46%">
+  <img src="docs/assets/half-open-laptop-agents.webp" alt="Software engineers before and after agents: carrying a half-open laptop" width="46%">
+</p>
+
 Lightweight native macOS CLI for Apple Silicon MacBook clamshell sessions. It
 keeps the machine awake on AC power, dims the built-in display, mutes the default
 audio output, and restores when you come back, without AppleScript or
@@ -10,6 +17,25 @@ M4 family Macs.
 
 ClamshellCtl also includes experimental source for a small macOS menu bar app,
 but the public Homebrew distribution is CLI-only for now.
+
+## Why
+
+Existing tools cover parts of this workflow:
+
+- [Amphetamine](https://iffy.freshdesk.com/support/solutions/articles/48001077199-amphetamine-closed-display-mode): keep-awake app
+- [Sleepless](https://github.com/Aboudjem/Sleepless): lid-closed keep-awake GUI
+- `caffeinate`: sleep prevention
+- `pmset disablesleep`: raw system command
+- [`brightness`](https://github.com/nriley/brightness): display brightness CLI
+
+ClamshellCtl is intentionally narrower: a lightweight CLI for AI-agent and
+clamshell sessions. It is not just keep-awake. It bundles the session controls
+you usually want when the agent keeps working and you want to close the MacBook:
+
+- keep work running with the MacBook closed
+- minimize built-in display brightness
+- mute audio
+- restore when keyboard, mouse, or trackpad activity resumes
 
 ## Install with Homebrew
 
