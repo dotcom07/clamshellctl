@@ -58,7 +58,7 @@ static int run_pmset_disablesleep(bool enabled) {
     pid_t pid = fork();
 
     if (pid < 0) {
-        fprintf(stderr, "brightness_m4: fork failed: %s\n", strerror(errno));
+        fprintf(stderr, "clamshellctl: fork failed: %s\n", strerror(errno));
         return 1;
     }
 
@@ -88,12 +88,12 @@ static int run_pmset_disablesleep(bool enabled) {
 
     int status = 0;
     if (waitpid(pid, &status, 0) < 0) {
-        fprintf(stderr, "brightness_m4: waitpid failed: %s\n", strerror(errno));
+        fprintf(stderr, "clamshellctl: waitpid failed: %s\n", strerror(errno));
         return 1;
     }
 
     if (!is_success(status)) {
-        fprintf(stderr, "brightness_m4: pmset disablesleep %d failed\n", enabled ? 1 : 0);
+        fprintf(stderr, "clamshellctl: pmset disablesleep %d failed\n", enabled ? 1 : 0);
         return 1;
     }
 
@@ -290,7 +290,7 @@ static bool get_brightness_iokit(CGDirectDisplayID display, float *brightness) {
 static int set_brightness(float brightness) {
     display_target_t target = find_display();
     if (!target.found) {
-        fprintf(stderr, "brightness_m4: no online display found\n");
+        fprintf(stderr, "clamshellctl: no online display found\n");
         return 1;
     }
 
@@ -300,7 +300,7 @@ static int set_brightness(float brightness) {
         return 0;
     }
 
-    fprintf(stderr, "brightness_m4: failed to set brightness for display %u\n", target.id);
+    fprintf(stderr, "clamshellctl: failed to set brightness for display %u\n", target.id);
     return 1;
 }
 
@@ -338,7 +338,7 @@ static bool get_default_output(AudioDeviceID *device) {
 static int set_mute(bool muted) {
     AudioDeviceID device = kAudioObjectUnknown;
     if (!get_default_output(&device)) {
-        fprintf(stderr, "brightness_m4: failed to find default output device\n");
+        fprintf(stderr, "clamshellctl: failed to find default output device\n");
         return 1;
     }
 
@@ -351,7 +351,7 @@ static int set_mute(bool muted) {
     Boolean writable = false;
     OSStatus status = AudioObjectIsPropertySettable(device, &address, &writable);
     if (status != noErr || !writable) {
-        fprintf(stderr, "brightness_m4: output mute is not writable\n");
+        fprintf(stderr, "clamshellctl: output mute is not writable\n");
         return 1;
     }
 
@@ -365,7 +365,7 @@ static int set_mute(bool muted) {
         &can_set);
 
     if (status != noErr) {
-        fprintf(stderr, "brightness_m4: failed to set output mute (%d)\n", status);
+        fprintf(stderr, "clamshellctl: failed to set output mute (%d)\n", status);
         return 1;
     }
 

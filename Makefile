@@ -2,7 +2,7 @@ CC ?= clang
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 BUILD_DIR ?= build
-TARGET := $(BUILD_DIR)/brightness_m4
+TARGET := $(BUILD_DIR)/clamshellctl
 
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -Wno-deprecated-declarations -O2
 CPPFLAGS ?=
@@ -19,7 +19,7 @@ LDLIBS := -framework ApplicationServices \
 
 all: $(TARGET)
 
-$(TARGET): src/brightness_m4.c | $(BUILD_DIR)
+$(TARGET): src/clamshellctl.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
 $(BUILD_DIR):
@@ -27,10 +27,10 @@ $(BUILD_DIR):
 
 install: $(TARGET)
 	install -d "$(DESTDIR)$(BINDIR)"
-	install -m 0755 "$(TARGET)" "$(DESTDIR)$(BINDIR)/brightness_m4"
+	install -m 0755 "$(TARGET)" "$(DESTDIR)$(BINDIR)/clamshellctl"
 
 uninstall:
-	rm -f "$(DESTDIR)$(BINDIR)/brightness_m4"
+	rm -f "$(DESTDIR)$(BINDIR)/clamshellctl"
 
 clean:
 	rm -rf "$(BUILD_DIR)"

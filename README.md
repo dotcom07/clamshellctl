@@ -1,14 +1,14 @@
-# brightness_m4
+# clamshellctl
 
 Small native macOS CLI for clamshell-style use on Apple Silicon MacBooks.
 
-`brightness_m4 on` does three things:
+`clamshellctl on` does three things:
 
 - sets `pmset -c disablesleep 1`
 - sets the built-in display brightness to `0.0`
 - mutes the default output device
 
-`brightness_m4 off` restores:
+`clamshellctl off` restores:
 
 - `pmset -c disablesleep 0`
 - brightness to `0.5`
@@ -23,7 +23,7 @@ make
 The binary is written to:
 
 ```sh
-build/brightness_m4
+build/clamshellctl
 ```
 
 Install it somewhere on your `PATH`:
@@ -37,10 +37,10 @@ sudo make install
 Run it from your normal user session:
 
 ```sh
-brightness_m4 on
-brightness_m4 off
-brightness_m4 status
-brightness_m4 diag
+clamshellctl on
+clamshellctl off
+clamshellctl status
+clamshellctl diag
 ```
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
@@ -49,8 +49,8 @@ root. Brightness and audio mute are still changed from the user session.
 Optional shell aliases:
 
 ```sh
-alias clamshellOn='brightness_m4 on'
-alias clamshellOff='brightness_m4 off'
+alias clamshellOn='clamshellctl on'
+alias clamshellOff='clamshellctl off'
 ```
 
 ## Notes
@@ -66,5 +66,5 @@ permissions. `DisplayServices` and `CoreDisplay` do not ship public headers, so 
 tool links their exported symbols weakly and falls back when a path is unavailable.
 
 On Apple Silicon MacBook Pros where Homebrew `brightness` fails with an IOKit
-error, `brightness_m4 diag` should show whether `DisplayServices` or
+error, `clamshellctl diag` should show whether `DisplayServices` or
 `CoreDisplay` can read the built-in display brightness.
