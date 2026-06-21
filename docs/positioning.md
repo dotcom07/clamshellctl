@@ -43,8 +43,8 @@ For the menu bar app, say this clearly:
 
 - Standard Mode is for brightness and mute with the lowest permission burden.
 - Strong Mode is for closed-display, long-running work.
-- The GUI cask is a tester build until Developer ID signing and notarization are
-  done.
+- The GUI is not distributed through Homebrew until Developer ID signing and
+  notarization are done.
 
 ## Copy Ideas
 

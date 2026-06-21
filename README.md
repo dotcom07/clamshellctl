@@ -7,23 +7,14 @@ audio output without AppleScript or Accessibility permissions.
 Tested on Apple Silicon MacBook Pro hardware and designed for M1, M2, M3, and
 M4 family Macs.
 
-ClamshellCtl also includes a small macOS menu bar app for people who prefer a
-clickable interface over terminal commands.
+ClamshellCtl also includes experimental source for a small macOS menu bar app,
+but the public Homebrew distribution is CLI-only for now.
 
 ## Install with Homebrew
-
-Install the terminal command:
 
 ```sh
 brew tap dotcom07/clamshellctl
 brew install clamshellctl
-```
-
-Install the menu bar app:
-
-```sh
-brew tap dotcom07/clamshellctl
-brew install --cask clamshellctl-app
 ```
 
 `clamshellctl on` does three things:
@@ -93,7 +84,10 @@ immediately because of the input used to start the command.
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.
 
-## Menu Bar App
+## Experimental Menu Bar App
+
+The repo contains an experimental menu bar app, but it is not distributed through
+Homebrew yet. The CLI is the supported public path.
 
 The GUI lives in the top-right macOS menu bar. It is intentionally small:
 
@@ -108,9 +102,8 @@ the built-in display, and mutes audio without asking for an administrator
 password. It is best for a quick, low-risk brightness-and-mute workflow.
 
 If your goal is to close the MacBook while an AI agent, build, download, or other
-long-running job continues, use the CLI first. If you want the menu bar app for
-that use case, enable Strong Mode. Standard Mode may still allow macOS to sleep
-when the display is closed, even though brightness and audio mute work.
+long-running job continues, use the CLI. Standard Mode may still allow macOS to
+sleep when the display is closed, even though brightness and audio mute work.
 
 Strong Mode is optional. It is for users who specifically want the GUI to use the
 same stronger `pmset disablesleep` behavior as the CLI. When enabled, the app asks
@@ -134,20 +127,19 @@ working after Strong Mode is removed.
 The terminal command is the easiest first release because Homebrew builds it
 from source and installs it like other command-line tools.
 
-The menu bar app is the friendlier product experience, but public macOS apps
-need one extra business step: Developer ID signing and Apple notarization.
-Without that, macOS Gatekeeper can warn that the app is from an unidentified
-developer, even if the code is open source and the Homebrew install succeeds.
+The menu bar app is not distributed through Homebrew yet. Public macOS apps need
+Developer ID signing and Apple notarization; without that, macOS Gatekeeper can
+warn that the app is from an unidentified developer, even if the code is open
+source.
 
 For non-developer users, the intended public path is:
 
 1. Install from Homebrew.
-2. Prefer the CLI for closed-display, long-running work.
-3. Use the menu bar app with Strong Mode if they want a clickable closed-display workflow.
-4. Use Standard Mode only for the simplest brightness-and-mute workflow.
+2. Use the CLI for closed-display, long-running work.
+3. Treat the menu bar app as local experimental source only.
 
-Until the app is Developer ID signed and notarized, treat the cask as a tester
-build. The CLI remains the recommended stable path. See
+Until the app is Developer ID signed and notarized, the CLI remains the
+recommended stable path. See
 [`docs/distribution.md`](docs/distribution.md) for Gatekeeper troubleshooting and
 the signing/notarization release flow.
 

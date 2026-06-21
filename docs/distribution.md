@@ -3,13 +3,13 @@
 If macOS shows `"ClamshellCtl" Not Opened`, the app was blocked by Gatekeeper.
 This usually means the app is not Developer ID signed and notarized.
 
-The CLI Homebrew formula is the recommended stable install. The menu bar app cask
-is a tester build until signing and notarization are complete.
+The CLI Homebrew formula is the recommended stable install. The menu bar app is
+not distributed through Homebrew until signing and notarization are complete.
 
 ## For Testers
 
-If you built the app yourself or trust the exact release you installed, you can
-allow it on your own Mac:
+If you built the app yourself and trust that local build, you can allow it on
+your own Mac:
 
 1. Try to open `ClamshellCtl.app` once.
 2. Open System Settings.
@@ -69,7 +69,7 @@ ditto -c -k --keepParent build/ClamshellCtl.app build/ClamshellCtl-0.4.1.zip
 shasum -a 256 build/ClamshellCtl-0.4.1.zip
 ```
 
-Then upload the final zip to the GitHub release and update the Homebrew cask
+Then upload the final zip to the GitHub release and add or update a Homebrew cask
 `sha256`.
 
 ## Why Ad-Hoc Signing Is Not Enough
