@@ -2,9 +2,13 @@
 
 Strong Mode is an optional setting for the ClamshellCtl menu bar app.
 
-Most users should start with Standard Mode. Standard Mode does not ask for an
-administrator password. It uses macOS's public keep-awake API, dims the built-in
-display, and mutes audio.
+Most users should use the CLI for closed-display, long-running work. The CLI uses
+`pmset disablesleep`, which is the behavior people usually want when an AI agent,
+build, download, or other job must keep running after the MacBook is closed.
+
+Standard Mode does not ask for an administrator password. It uses macOS's public
+keep-awake API, dims the built-in display, and mutes audio. It is useful for a
+quick brightness-and-mute workflow, but it may not keep a closed MacBook awake.
 
 Strong Mode is for people who want the menu bar app to use the same stronger
 sleep behavior as the terminal command. It uses:
@@ -43,7 +47,10 @@ easily than Apple's system binaries.
 
 ## When To Use It
 
-Use Standard Mode if you want the simplest and safest clickable experience.
+Use the CLI first if your main goal is to close the MacBook while work continues.
+
+Use Standard Mode if you want the simplest clickable brightness-and-mute
+experience and do not need to rely on closed-display behavior.
 
 Use Strong Mode if you understand that ClamshellCtl will make one small system
 configuration change so the menu bar app can use `pmset disablesleep` without
@@ -53,8 +60,12 @@ You can remove Strong Mode from the menu bar app at any time.
 
 ## How To Explain This To Users
 
-Standard Mode is the default because it is the low-friction option: install the
-app, click Turn On, and macOS does not ask for an administrator password.
+The CLI is the recommended stable path for people who want their MacBook to keep
+working while closed.
+
+Standard Mode is the low-friction app option: install the app, click Turn On, and
+macOS does not ask for an administrator password. It is honest to describe it as
+brightness-and-mute first, not as a guaranteed closed-display mode.
 
 Strong Mode is an advanced switch. It is useful when someone specifically wants
 the MacBook to stay awake more aggressively while closed and connected to power.
@@ -63,6 +74,7 @@ permission that only controls `pmset disablesleep` on and off.
 
 That tradeoff is intentional:
 
-- Standard Mode is best for most people.
-- Strong Mode is best for people who understand the extra system permission.
+- CLI is best for closed-display, long-running jobs.
+- Strong Mode is best for people who want that behavior in the menu bar app.
+- Standard Mode is best for low-risk brightness and mute control.
 - ClamshellCtl should not ask users to bypass macOS security just to try the app.

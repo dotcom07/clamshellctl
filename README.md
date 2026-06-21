@@ -105,7 +105,12 @@ The GUI lives in the top-right macOS menu bar. It is intentionally small:
 
 Standard Mode is the default. It uses the public macOS power assertion API, dims
 the built-in display, and mutes audio without asking for an administrator
-password. This is the safest experience for most people.
+password. It is best for a quick, low-risk brightness-and-mute workflow.
+
+If your goal is to close the MacBook while an AI agent, build, download, or other
+long-running job continues, use the CLI first. If you want the menu bar app for
+that use case, enable Strong Mode. Standard Mode may still allow macOS to sleep
+when the display is closed, even though brightness and audio mute work.
 
 Strong Mode is optional. It is for users who specifically want the GUI to use the
 same stronger `pmset disablesleep` behavior as the CLI. When enabled, the app asks
@@ -137,9 +142,9 @@ developer, even if the code is open source and the Homebrew install succeeds.
 For non-developer users, the intended public path is:
 
 1. Install from Homebrew.
-2. Open ClamshellCtl from the menu bar.
-3. Use Standard Mode without an administrator password.
-4. Enable Strong Mode only if they want the stronger closed-display behavior.
+2. Prefer the CLI for closed-display, long-running work.
+3. Use the menu bar app with Strong Mode if they want a clickable closed-display workflow.
+4. Use Standard Mode only for the simplest brightness-and-mute workflow.
 
 Until the app is Developer ID signed and notarized, treat the cask as a tester
 build. The CLI remains the recommended stable path.
