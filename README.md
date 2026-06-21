@@ -147,7 +147,9 @@ For non-developer users, the intended public path is:
 4. Use Standard Mode only for the simplest brightness-and-mute workflow.
 
 Until the app is Developer ID signed and notarized, treat the cask as a tester
-build. The CLI remains the recommended stable path.
+build. The CLI remains the recommended stable path. See
+[`docs/distribution.md`](docs/distribution.md) for Gatekeeper troubleshooting and
+the signing/notarization release flow.
 
 ## Notes
 
