@@ -71,13 +71,14 @@ typedef struct {
     bool has_duration;
     unsigned int duration_seconds;
     bool until_activity;
+    bool stay_on;
     bool without_pmset;
 } on_options_t;
 
 static void usage(FILE *stream, const char *program) {
     fprintf(stream, "usage: %s on [duration]\n", program);
     fprintf(stream, "       %s on --for <duration>\n", program);
-    fprintf(stream, "       %s on [duration] --until-activity\n", program);
+    fprintf(stream, "       %s on [duration] --until-activity|--stay-on\n", program);
     fprintf(stream, "       %s off|status|diag\n", program);
     fprintf(stream, "       %s --help\n", program);
     fprintf(stream, "       %s --version\n", program);
@@ -87,6 +88,7 @@ static void usage(FILE *stream, const char *program) {
     fprintf(stream, "  on --for 2h    turn on, wait 2 hours, then restore with off\n");
     fprintf(stream, "  on --until-activity\n");
     fprintf(stream, "                 turn on, then restore when keyboard/mouse activity resumes\n");
+    fprintf(stream, "  on --stay-on   turn on and ignore activity until off or the timer expires\n");
     fprintf(stream, "  off            restore normal AC sleep and previous brightness/mute state\n");
     fprintf(stream, "  status         print detected display brightness, mute state, and pmset value\n");
     fprintf(stream, "  diag           print native brightness/audio capability diagnostics\n");
@@ -163,10 +165,18 @@ static bool parse_on_options(int argc, char **argv, on_options_t *options) {
         unsigned int seconds = 0;
 
         if (strcmp(argv[i], "--until-activity") == 0) {
-            if (options->until_activity) {
+            if (options->until_activity || options->stay_on) {
                 return false;
             }
             options->until_activity = true;
+            continue;
+        }
+
+        if (strcmp(argv[i], "--stay-on") == 0) {
+            if (options->stay_on || options->until_activity) {
+                return false;
+            }
+            options->stay_on = true;
             continue;
         }
 

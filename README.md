@@ -50,6 +50,7 @@ brew install clamshellctl
 - sets the built-in display brightness to `0.0`
 - mutes the default output device
 - waits for keyboard, mouse, or trackpad activity, then restores with `off`
+- use `--stay-on` to ignore activity until `off` or the timer expires
 
 `clamshellctl off` restores:
 
@@ -94,7 +95,9 @@ clamshellctl on
 clamshellctl on 30m
 clamshellctl on --for 2h
 clamshellctl on --until-activity
+clamshellctl on --stay-on
 clamshellctl on 2h --until-activity
+clamshellctl on 2h --stay-on
 clamshellctl off
 clamshellctl status
 clamshellctl diag
@@ -110,6 +113,10 @@ Timed sessions keep the command running until the timer ends, then restore with
 `off`. Duration suffixes can be `s`, `m`, or `h`; bare numbers are seconds. Add
 `--until-activity` to a timed session to restore when either the timer expires or
 activity resumes.
+
+Use `--stay-on` when you want the clamshell session to ignore keyboard, mouse, or
+trackpad activity. Without a timer, it stays on until `clamshellctl off`. With a
+timer, it restores only when the timer expires or you press Ctrl-C.
 
 `on` and `off` call `sudo pmset` internally because `pmset disablesleep` requires
 root. Brightness and audio mute are still changed from the user session.

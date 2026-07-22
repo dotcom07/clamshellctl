@@ -29,6 +29,7 @@ ClamshellCtl keeps the workflow small and explicit:
 - mute audio
 - restore brightness and mute state later
 - optionally stop after a timer or when activity resumes
+- optionally stay on even if keyboard, mouse, or trackpad activity resumes
 
 The differentiator is the bundle, not just one underlying trick. Existing Mac
 keep-awake tools solve sleep, brightness tools solve brightness, and audio tools
@@ -40,7 +41,9 @@ clamshellctl on
 ```
 
 That one command keeps the Mac awake, dims the built-in display, mutes audio, and
-restores when keyboard, mouse, or trackpad activity resumes.
+restores when keyboard, mouse, or trackpad activity resumes. Use `clamshellctl on
+--stay-on` when you want it to ignore activity until manual restore or the timer
+expires.
 
 ## Recommended Product Framing
 
